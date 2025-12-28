@@ -1,21 +1,28 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.contrib.auth.views import LoginView
 from django.urls import include, path
 
-from accounts.views import LogoutAllowGetView, ProfileView, SignupView
+from accounts.views import LoginGateView, LogoutAllowGetView, ProfileView, SignupView
 from .views import dashboard
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(
         "",
-        LoginView.as_view(
+        LoginGateView.as_view(
             template_name="registration/login.html",
-            redirect_authenticated_user=True,
+            redirect_authenticated_user=False,
         ),
         name="home",
+    ),
+    path(
+        "accounts/login/",
+        LoginGateView.as_view(
+            template_name="registration/login.html",
+            redirect_authenticated_user=False,
+        ),
+        name="login",
     ),
     path("accounts/logout/", LogoutAllowGetView.as_view(), name="logout"),
     path("accounts/signup/", SignupView.as_view(), name="signup"),

@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -39,6 +40,14 @@ class SignupForm(UserCreationForm):
         }
         allowed_roles = [choice for choice in User.Role.choices if choice[0] in allowed_role_values]
         self.fields["role"].choices = allowed_roles
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if not username:
+            return username
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError("User with this username already exists.")
+        return username
 
 
 class ProfileForm(forms.ModelForm):

@@ -3,10 +3,12 @@
 {% block content %}
 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
   <h1 class="text-2xl font-semibold">Силлабусы</h1>
-  <div class="flex flex-wrap gap-2">
-    <a href="{% url 'syllabus_create' %}#upload" class="btn-secondary">Загрузить старый PDF</a>
-    <a href="{% url 'syllabus_create' %}" class="btn-primary">Создать силлабус</a>
-  </div>
+  {% if user.can_edit_content %}
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'syllabus_create' %}#upload" class="btn-secondary">Загрузить старый PDF</a>
+      <a href="{% url 'syllabus_create' %}" class="btn-primary">Создать силлабус</a>
+    </div>
+  {% endif %}
 </div>
 
 <table class="table">
@@ -39,31 +41,35 @@
       </td>
       <td class="p-2 text-sm">
         {% if syllabus.pdf_file %}
-          <a href="{{ syllabus.pdf_file.url }}" class="text-blue-600 hover:underline">Скачать</a>
+          <a href="{{ syllabus.pdf_file.url }}" class="link">Скачать</a>
         {% else %}
           <span class="text-gray-500">Нет файла</span>
         {% endif %}
       </td>
       <td class="p-2">
         <div class="flex flex-wrap gap-2">
-          <a href="{% url 'syllabus_detail' syllabus.pk %}" class="text-blue-600 hover:underline">Открыть</a>
-          {% if user.role == "dean" and syllabus.status == "submitted_dean" %}
-            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_dean' %}">
+          <a href="{% url 'syllabus_detail' syllabus.pk %}" class="link">Открыть</a>
+          {% if user.role == "admin" and syllabus.status == "submitted_dean" or user.role == "dean" and syllabus.status == "submitted_dean" and syllabus.creator != user %}
+            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_dean' %}" class="inline-flex items-center gap-2">
               {% csrf_token %}
+              <input type="text" name="comment" placeholder="Комментарий" class="border rounded px-2 py-1 text-sm">
               <button class="btn-primary">Утвердить</button>
             </form>
-            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}">
+            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}" class="inline-flex items-center gap-2">
               {% csrf_token %}
+              <input type="text" name="comment" placeholder="Причина отклонения" class="border rounded px-2 py-1 text-sm" required>
               <button class="btn-secondary">Отклонить</button>
             </form>
           {% endif %}
-          {% if user.role == "umu" and syllabus.status == "submitted_umu" %}
-            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_umu' %}">
+          {% if user.role == "admin" and syllabus.status == "submitted_umu" or user.role == "umu" and syllabus.status == "submitted_umu" and syllabus.creator != user %}
+            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_umu' %}" class="inline-flex items-center gap-2">
               {% csrf_token %}
-              <button class="btn-primary">Утвердить</button>
+              <input type="text" name="comment" placeholder="Комментарий" class="border rounded px-2 py-1 text-sm">
+              <button class="btn-primary">Финально утвердить</button>
             </form>
-            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}">
+            <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}" class="inline-flex items-center gap-2">
               {% csrf_token %}
+              <input type="text" name="comment" placeholder="Причина отклонения" class="border rounded px-2 py-1 text-sm" required>
               <button class="btn-secondary">Отклонить</button>
             </form>
           {% endif %}

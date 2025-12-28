@@ -7,7 +7,7 @@
       font-family: "DejaVu Sans", Arial, sans-serif;
       font-size: 12px;
       color: #0f172a;
-      line-height: 1.4;
+      line-height: 1.45;
     }
     .header {
       padding-bottom: 12px;
@@ -23,12 +23,25 @@
       font-size: 11px;
       color: #475569;
     }
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 16px;
+      margin-bottom: 6px;
+    }
+    .subsection-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 6px;
     }
-    th, td {
+    th,
+    td {
       border: 1px solid #cbd5e1;
       padding: 6px;
       text-align: left;
@@ -38,101 +51,197 @@
       background: #f1f5f9;
       font-weight: 600;
     }
-    .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-top: 18px;
+    .meta-table th {
+      width: 30%;
     }
-    .topic {
-      margin-top: 12px;
-      padding: 8px 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-    }
-    .topic-title {
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .topic-meta {
-      font-size: 11px;
-      color: #64748b;
-      margin-bottom: 6px;
+    .cell-pre {
+      white-space: pre-wrap;
     }
     ul {
       margin: 4px 0 0 16px;
       padding: 0;
     }
+    .muted {
+      color: #64748b;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="title">Силлабус по курсу {{ syllabus.course.display_title }}</div>
+    <div class="title">Силлабус по дисциплине {{ syllabus.course.display_title }}</div>
     <div class="meta">
-      Код: {{ syllabus.course.code }} - Семестр: {{ syllabus.semester }} - Уч. год: {{ syllabus.academic_year }}
+      Код: {{ syllabus.course.code }} · Семестр: {{ syllabus.semester }} · Учебный год: {{ syllabus.academic_year }}
     </div>
     <div class="meta">
-      Статус: {{ syllabus.get_status_display }} - Язык: {{ syllabus.get_main_language_display }}
+      Статус: {{ syllabus.get_status_display }} · Язык: {{ syllabus.get_main_language_display }}
     </div>
   </div>
 
-  <div class="section-title">Структура по неделям</div>
+  {% if syllabus.credits_ects or syllabus.total_hours or syllabus.contact_hours or syllabus.self_study_hours or syllabus.prerequisites or syllabus.delivery_format or syllabus.level or syllabus.program_name or syllabus.instructor_name or syllabus.instructor_contacts or syllabus.class_schedule %}
+    <div class="section-title">Паспорт дисциплины</div>
+    <table class="meta-table">
+      <tbody>
+        {% if syllabus.credits_ects %}<tr><th>Кредиты (ECTS)</th><td>{{ syllabus.credits_ects }}</td></tr>{% endif %}
+        {% if syllabus.total_hours %}<tr><th>Всего часов</th><td>{{ syllabus.total_hours }}</td></tr>{% endif %}
+        {% if syllabus.contact_hours %}<tr><th>Аудиторные часы</th><td>{{ syllabus.contact_hours }}</td></tr>{% endif %}
+        {% if syllabus.self_study_hours %}<tr><th>Самостоятельная работа</th><td>{{ syllabus.self_study_hours }}</td></tr>{% endif %}
+        {% if syllabus.prerequisites %}<tr><th>Пререквизиты</th><td class="cell-pre">{{ syllabus.prerequisites }}</td></tr>{% endif %}
+        {% if syllabus.delivery_format %}<tr><th>Формат обучения</th><td>{{ syllabus.delivery_format }}</td></tr>{% endif %}
+        {% if syllabus.level %}<tr><th>Уровень обучения</th><td>{{ syllabus.level }}</td></tr>{% endif %}
+        {% if syllabus.program_name %}<tr><th>Образовательная программа</th><td>{{ syllabus.program_name }}</td></tr>{% endif %}
+        {% if syllabus.instructor_name %}<tr><th>Преподаватель</th><td>{{ syllabus.instructor_name }}</td></tr>{% endif %}
+        {% if syllabus.instructor_contacts %}<tr><th>Контакты преподавателя</th><td class="cell-pre">{{ syllabus.instructor_contacts }}</td></tr>{% endif %}
+        {% if syllabus.class_schedule %}<tr><th>Время и место занятий</th><td class="cell-pre">{{ syllabus.class_schedule }}</td></tr>{% endif %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if syllabus.course_description %}
+    <div class="section-title">1. Краткое описание курса</div>
+    <div class="cell-pre">{{ syllabus.course_description }}</div>
+  {% endif %}
+
+  {% if syllabus.course_goal %}
+    <div class="subsection-title">Цель курса</div>
+    <div class="cell-pre">{{ syllabus.course_goal }}</div>
+  {% endif %}
+
+  {% if learning_outcomes_list %}
+    <div class="subsection-title">Ожидаемые результаты</div>
+    <ul>
+      {% for item in learning_outcomes_list %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if teaching_methods_list %}
+    <div class="subsection-title">Методы обучения</div>
+    <ul>
+      {% for item in teaching_methods_list %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="section-title">2. Тематический план по неделям</div>
   <table>
     <thead>
       <tr>
         <th>Неделя</th>
-        <th>Тема</th>
-        <th>Часы</th>
-        <th>Тип</th>
+        <th>Тема / модуль</th>
+        <th>Задания</th>
+        <th>Результат обучения</th>
+        <th>Литература</th>
+        <th>Структура оценок</th>
       </tr>
     </thead>
     <tbody>
       {% for st in topics %}
         <tr>
-          <td>{{ st.week_number }}</td>
-          <td>{{ st.get_title }}</td>
-          <td>{{ st.custom_hours|default:st.topic.default_hours }}</td>
-          <td>{{ st.topic.get_week_type_display }}</td>
+          <td>{{ st.week_label|default:st.week_number }}</td>
+          <td>
+            <div>{{ st.get_title }}</div>
+            <div class="muted">{{ st.topic.get_week_type_display }}, {{ st.custom_hours|default:st.topic.default_hours }} ч.</div>
+          </td>
+          <td class="cell-pre">
+            {% if st.tasks %}
+              {{ st.tasks }}
+            {% elif st.topic.description_ru or st.topic.description_en or st.topic.description_kz %}
+              {{ st.topic.description_ru|default:st.topic.description_en|default:st.topic.description_kz }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td class="cell-pre">
+            {% if st.learning_outcomes %}
+              {{ st.learning_outcomes }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if st.literature_notes %}
+              <div class="cell-pre">{{ st.literature_notes }}</div>
+            {% elif st.topic.literature.all %}
+              <ul>
+                {% for lit in st.topic.literature.all %}
+                  <li>
+                    {{ lit.title }}
+                    {% if lit.author %} - {{ lit.author }}{% endif %}
+                    {% if lit.year %} ({{ lit.year }}){% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td class="cell-pre">
+            {% if st.assessment %}
+              {{ st.assessment }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <div class="section-title">Материалы по темам</div>
-  {% for st in topics %}
-    <div class="topic">
-      <div class="topic-title">{{ st.week_number }}. {{ st.get_title }}</div>
-      <div class="topic-meta">
-        Тип: {{ st.topic.get_week_type_display }} - Часы: {{ st.custom_hours|default:st.topic.default_hours }}
-      </div>
-      {% if st.topic.description_ru or st.topic.description_en or st.topic.description_kz %}
-        <div>{{ st.topic.description_ru|default:st.topic.description_en|default:st.topic.description_kz }}</div>
-      {% endif %}
-      <div class="topic-meta">Литература</div>
-      {% if st.topic.literature.all %}
-        <ul>
-          {% for lit in st.topic.literature.all %}
-            <li>
-              {{ lit.title }}
-              {% if lit.author %} - {{ lit.author }}{% endif %}
-              {% if lit.year %} ({{ lit.year }}){% endif %}
-              - {{ lit.get_lit_type_display }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="topic-meta">Нет записей.</div>
-      {% endif %}
-      <div class="topic-meta" style="margin-top: 6px;">Контрольные вопросы</div>
-      {% if st.topic.questions.all %}
-        <ul>
-          {% for q in st.topic.questions.all %}
-            <li>{{ q.question_ru|default:q.question_en|default:q.question_kz }}</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="topic-meta">Нет записей.</div>
-      {% endif %}
-    </div>
-  {% endfor %}
+  {% if syllabus.teaching_philosophy %}
+    <div class="section-title">3. Философия преподавания и обучения</div>
+    <div class="cell-pre">{{ syllabus.teaching_philosophy }}</div>
+  {% endif %}
+
+  {% if syllabus.course_policy %}
+    <div class="section-title">Политика курса</div>
+    <div class="cell-pre">{{ syllabus.course_policy }}</div>
+  {% endif %}
+
+  {% if syllabus.academic_integrity_policy %}
+    <div class="section-title">Академическая честность и использование ИИ</div>
+    <div class="cell-pre">{{ syllabus.academic_integrity_policy }}</div>
+  {% endif %}
+
+  {% if syllabus.inclusive_policy %}
+    <div class="section-title">Инклюзивное академическое сообщество</div>
+    <div class="cell-pre">{{ syllabus.inclusive_policy }}</div>
+  {% endif %}
+
+  {% if syllabus.assessment_policy %}
+    <div class="section-title">Политика оценивания</div>
+    <div class="cell-pre">{{ syllabus.assessment_policy }}</div>
+  {% endif %}
+
+  {% if syllabus.grading_scale %}
+    <div class="section-title">Балльно-рейтинговая шкала</div>
+    <div class="cell-pre">{{ syllabus.grading_scale }}</div>
+  {% endif %}
+
+  {% if main_literature_list or additional_literature_list %}
+    <div class="section-title">4. Список литературы</div>
+    {% if main_literature_list %}
+      <div class="subsection-title">Обязательная литература</div>
+      <ul>
+        {% for item in main_literature_list %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if additional_literature_list %}
+      <div class="subsection-title">Дополнительная литература</div>
+      <ul>
+        {% for item in additional_literature_list %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+
+  {% if syllabus.appendix %}
+    <div class="section-title">Приложения</div>
+    <div class="cell-pre">{{ syllabus.appendix }}</div>
+  {% endif %}
 </body>
 </html>

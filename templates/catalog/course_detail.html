@@ -12,12 +12,16 @@
       </p>
     {% endif %}
   </div>
-  <a href="{% url 'course_edit' course.pk %}" class="btn-primary">Редактировать курс</a>
+  {% if user == course.owner or user.role == "admin" %}
+    <a href="{% url 'course_edit' course.pk %}" class="btn-primary">Редактировать курс</a>
+  {% endif %}
 </div>
 
 <div class="flex justify-between items-center mb-2">
   <h2 class="text-xl font-semibold">Темы курса</h2>
-  <a href="{% url 'topic_create' course.pk %}" class="btn-secondary">Добавить тему</a>
+  {% if user == course.owner or user.role == "admin" %}
+    <a href="{% url 'topic_create' course.pk %}" class="btn-secondary">Добавить тему</a>
+  {% endif %}
 </div>
 
 <table class="table">
@@ -49,7 +53,7 @@
       <td class="p-2">{{ topic.get_week_type_display }}</td>
       <td class="p-2 text-sm">
         <details>
-          <summary class="cursor-pointer text-blue-600">Смотреть</summary>
+          <summary class="cursor-pointer link">Смотреть</summary>
           <div class="mt-2 space-y-3">
             <div>
               <div class="font-medium text-slate-700">Литература</div>
@@ -84,7 +88,9 @@
         </details>
       </td>
       <td class="p-2">
-        <a href="{% url 'topic_edit' course.pk topic.pk %}" class="text-blue-600">Редактировать</a>
+        {% if user == course.owner or user.role == "admin" %}
+          <a href="{% url 'topic_edit' course.pk topic.pk %}" class="link">Редактировать</a>
+        {% endif %}
       </td>
     </tr>
   {% empty %}

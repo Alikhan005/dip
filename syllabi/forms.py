@@ -58,3 +58,78 @@ class SyllabusForm(forms.ModelForm):
         if course and copy_from and copy_from.course_id != course.id:
             self.add_error("copy_from", "Выберите силлабус этого же курса.")
         return data
+
+
+class SyllabusDetailsForm(forms.ModelForm):
+    class Meta:
+        model = Syllabus
+        fields = [
+            "credits_ects",
+            "total_hours",
+            "contact_hours",
+            "self_study_hours",
+            "prerequisites",
+            "delivery_format",
+            "level",
+            "program_name",
+            "instructor_name",
+            "instructor_contacts",
+            "class_schedule",
+            "course_description",
+            "course_goal",
+            "learning_outcomes",
+            "teaching_methods",
+            "teaching_philosophy",
+            "course_policy",
+            "academic_integrity_policy",
+            "inclusive_policy",
+            "assessment_policy",
+            "grading_scale",
+            "appendix",
+            "main_literature",
+            "additional_literature",
+        ]
+        labels = {
+            "credits_ects": "Кредиты (ECTS)",
+            "total_hours": "Всего часов",
+            "contact_hours": "Аудиторные часы",
+            "self_study_hours": "Самостоятельная работа (СРОП, СРО)",
+            "prerequisites": "Пререквизиты",
+            "delivery_format": "Формат обучения",
+            "level": "Уровень обучения",
+            "program_name": "Образовательная программа",
+            "instructor_name": "Преподаватель",
+            "instructor_contacts": "Контакты преподавателя",
+            "class_schedule": "Время и место проведения занятий",
+            "course_description": "Краткое описание курса",
+            "course_goal": "Цель курса",
+            "learning_outcomes": "Ожидаемые результаты",
+            "teaching_methods": "Методы обучения",
+            "teaching_philosophy": "Философия преподавания и обучения",
+            "course_policy": "Политика курса",
+            "academic_integrity_policy": "Академическая честность и использование ИИ",
+            "inclusive_policy": "Инклюзивное академическое сообщество",
+            "assessment_policy": "Политика оценивания",
+            "grading_scale": "Балльно-рейтинговая шкала",
+            "appendix": "Приложения и рубрикаторы",
+            "main_literature": "Обязательная литература",
+            "additional_literature": "Дополнительная литература",
+        }
+        widgets = {
+            "prerequisites": forms.Textarea(attrs={"rows": 2}),
+            "instructor_contacts": forms.Textarea(attrs={"rows": 2}),
+            "class_schedule": forms.Textarea(attrs={"rows": 2}),
+            "course_description": forms.Textarea(attrs={"rows": 4}),
+            "course_goal": forms.Textarea(attrs={"rows": 3}),
+            "learning_outcomes": forms.Textarea(attrs={"rows": 4}),
+            "teaching_methods": forms.Textarea(attrs={"rows": 3}),
+            "teaching_philosophy": forms.Textarea(attrs={"rows": 4}),
+            "course_policy": forms.Textarea(attrs={"rows": 4}),
+            "academic_integrity_policy": forms.Textarea(attrs={"rows": 4}),
+            "inclusive_policy": forms.Textarea(attrs={"rows": 4}),
+            "assessment_policy": forms.Textarea(attrs={"rows": 4}),
+            "grading_scale": forms.Textarea(attrs={"rows": 6}),
+            "appendix": forms.Textarea(attrs={"rows": 4}),
+            "main_literature": forms.Textarea(attrs={"rows": 4}),
+            "additional_literature": forms.Textarea(attrs={"rows": 4}),
+        }

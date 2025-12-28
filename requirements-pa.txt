@@ -1,0 +1,5 @@
+Django==5.2.9
+Pillow==12.0.0
+pypdf==5.1.0
+python-dotenv==1.2.1
+weasyprint==67.0

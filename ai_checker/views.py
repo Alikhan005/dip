@@ -55,6 +55,8 @@ def assistant_reply(request):
         )
 
     answer, model_name = answer_syllabus_question(message, syllabus)
+    if model_name == "rules-only":
+        model_name = ""
     return render(
         request,
         "ai_checker/assistant_response.html",

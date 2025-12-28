@@ -16,8 +16,9 @@
   </p>
 </div>
 
-{% if user.role == "teacher" or user.role == "program_leader" %}
+{% if user.can_view_courses or user.can_view_shared_courses %}
   <div class="grid gap-4 md:grid-cols-4">
+    {% if user.can_view_courses %}
     <div class="card p-5 flex flex-col justify-between">
       <div>
         <h2 class="text-xl font-semibold mb-2">Мои курсы</h2>
@@ -30,7 +31,9 @@
         <a href="{% url 'courses_list' %}" class="btn-primary inline-block">Открыть</a>
       </div>
     </div>
+    {% endif %}
 
+    {% if user.can_view_shared_courses %}
     <div class="card p-5 flex flex-col justify-between">
       <div>
         <h2 class="text-xl font-semibold mb-2">Общие курсы</h2>
@@ -43,6 +46,7 @@
         <a href="{% url 'shared_courses_list' %}" class="btn-primary inline-block">Открыть</a>
       </div>
     </div>
+    {% endif %}
 
     <div class="card p-5 flex flex-col justify-between">
       <div>
@@ -78,11 +82,13 @@
       <li>Соберите силлабус на семестр или загрузите старый PDF для ориентира.</li>
       <li>Проверьте недели, часы и отправьте на согласование.</li>
     </ol>
-    <div class="flex flex-wrap gap-2 mt-4">
-      <a href="{% url 'course_create' %}" class="btn-primary">Создать курс</a>
-      <a href="{% url 'syllabus_create' %}" class="btn-secondary">Создать силлабус</a>
-      <a href="{% url 'syllabus_create' %}#upload" class="btn-secondary">Загрузить PDF</a>
-    </div>
+    {% if user.can_view_courses %}
+      <div class="flex flex-wrap gap-2 mt-4">
+        <a href="{% url 'course_create' %}" class="btn-primary">Создать курс</a>
+        <a href="{% url 'syllabus_create' %}" class="btn-secondary">Создать силлабус</a>
+        <a href="{% url 'syllabus_create' %}#upload" class="btn-secondary">Загрузить PDF</a>
+      </div>
+    {% endif %}
   </div>
 
   <div class="card p-5 mt-6">
@@ -95,7 +101,7 @@
               <div class="font-medium">{{ syllabus.course.code }} {{ syllabus.semester }}</div>
               <div class="text-sm text-slate-500">{{ syllabus.get_status_display }}</div>
             </div>
-            <a href="{% url 'syllabus_detail' syllabus.pk %}" class="text-blue-600 hover:underline">Открыть</a>
+            <a href="{% url 'syllabus_detail' syllabus.pk %}" class="link">Открыть</a>
           </div>
         {% endfor %}
       </div>
@@ -117,17 +123,19 @@
       </div>
     </div>
 
-    <div class="card p-5 flex flex-col justify-between">
-      <div>
-        <h2 class="text-xl font-semibold mb-2">Общие курсы</h2>
-        <p class="text-gray-600 text-sm mb-3">
-          Смотрите базы тем и материалов для согласования.
-        </p>
+    {% if user.can_view_shared_courses %}
+      <div class="card p-5 flex flex-col justify-between">
+        <div>
+          <h2 class="text-xl font-semibold mb-2">Общие курсы</h2>
+          <p class="text-gray-600 text-sm mb-3">
+            Смотрите базы тем и материалов для согласования.
+          </p>
+        </div>
+        <div class="mt-4">
+          <a href="{% url 'shared_courses_list' %}" class="btn-secondary inline-block">Открыть</a>
+        </div>
       </div>
-      <div class="mt-4">
-        <a href="{% url 'shared_courses_list' %}" class="btn-secondary inline-block">Открыть</a>
-      </div>
-    </div>
+    {% endif %}
   </div>
 {% endif %}
 
@@ -146,13 +154,15 @@
             </div>
             <div class="flex flex-wrap gap-2">
               <a href="{% url 'syllabus_detail' syllabus.pk %}" class="btn-secondary">Открыть</a>
-              {% if user.role == "dean" %}
-                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_dean' %}">
+              {% if user.role == "admin" or user.role == "dean" and syllabus.creator != user %}
+                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_dean' %}" class="inline-flex items-center gap-2">
                   {% csrf_token %}
+                  <input type="text" name="comment" placeholder="Комментарий" class="border rounded px-2 py-1 text-sm">
                   <button class="btn-primary">Утвердить</button>
                 </form>
-                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}">
+                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}" class="inline-flex items-center gap-2">
                   {% csrf_token %}
+                  <input type="text" name="comment" placeholder="Причина отклонения" class="border rounded px-2 py-1 text-sm" required>
                   <button class="btn-secondary">Отклонить</button>
                 </form>
               {% endif %}
@@ -181,13 +191,15 @@
             </div>
             <div class="flex flex-wrap gap-2">
               <a href="{% url 'syllabus_detail' syllabus.pk %}" class="btn-secondary">Открыть</a>
-              {% if user.role == "umu" %}
-                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_umu' %}">
+              {% if user.role == "admin" or user.role == "umu" and syllabus.creator != user %}
+                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'approved_umu' %}" class="inline-flex items-center gap-2">
                   {% csrf_token %}
-                  <button class="btn-primary">Утвердить</button>
+                  <input type="text" name="comment" placeholder="Комментарий" class="border rounded px-2 py-1 text-sm">
+                  <button class="btn-primary">Финально утвердить</button>
                 </form>
-                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}">
+                <form method="post" action="{% url 'syllabus_change_status' syllabus.pk 'rejected' %}" class="inline-flex items-center gap-2">
                   {% csrf_token %}
+                  <input type="text" name="comment" placeholder="Причина отклонения" class="border rounded px-2 py-1 text-sm" required>
                   <button class="btn-secondary">Отклонить</button>
                 </form>
               {% endif %}

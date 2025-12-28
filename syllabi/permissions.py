@@ -48,7 +48,7 @@ def shared_syllabi_queryset(user):
 def can_view_syllabus(user, syllabus: Syllabus) -> bool:
     if user == syllabus.creator:
         return True
-    if user.role in ["admin", "dean", "umu"]:
+    if user.role in ["admin", "dean", "umu", "program_leader"]:
         return True
     if syllabus.is_shared and user.role in _SIMILAR_ROLES:
         return shared_syllabi_queryset(user).filter(pk=syllabus.pk).exists()

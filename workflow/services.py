@@ -5,41 +5,64 @@ from .models import SyllabusStatusLog
 
 def change_status(user, syllabus: Syllabus, new_status: str, comment: str = ""):
     old_status = syllabus.status
+    comment = (comment or "").strip()
+    is_admin = user.role == "admin"
+    is_dean = user.role == "dean"
+    is_umu = user.role == "umu"
+    is_teacher_like = user.is_teacher_like
+    is_creator = user == syllabus.creator
 
     if new_status == old_status:
         return syllabus
 
     if new_status == Syllabus.Status.SUBMITTED_DEAN:
-        if user != syllabus.creator:
+        if not is_admin and user != syllabus.creator:
             raise PermissionDenied("Только автор силлабуса может отправить его декану.")
+        if not is_admin and not is_teacher_like:
+            raise PermissionDenied("Отправлять декану может только преподаватель или декан.")
         if old_status not in [Syllabus.Status.DRAFT, Syllabus.Status.REJECTED]:
             raise PermissionDenied("Этот силлабус уже отправлен на согласование.")
 
     if new_status == Syllabus.Status.APPROVED_DEAN:
-        if user.role != "dean":
+        if not is_admin and not is_dean:
             raise PermissionDenied("Только декан может утверждать.")
+        if not is_admin and is_creator:
+            raise PermissionDenied("Нельзя утверждать собственный силлабус.")
         if old_status != Syllabus.Status.SUBMITTED_DEAN:
             raise PermissionDenied("Силлабус должен быть отправлен декану.")
 
     if new_status == Syllabus.Status.REJECTED:
-        if user.role == "dean":
+        if not comment:
+            raise ValueError("Комментарий обязателен при отклонении.")
+        if is_dean:
             if old_status != Syllabus.Status.SUBMITTED_DEAN:
                 raise PermissionDenied("Силлабус должен быть отправлен декану.")
-        elif user.role == "umu":
+            if is_creator:
+                raise PermissionDenied("Нельзя отклонять собственный силлабус.")
+        elif is_umu:
             if old_status != Syllabus.Status.SUBMITTED_UMU:
                 raise PermissionDenied("Силлабус должен быть отправлен в УМУ.")
+            if is_creator:
+                raise PermissionDenied("Нельзя отклонять собственный силлабус.")
+        elif is_admin:
+            if old_status not in [Syllabus.Status.SUBMITTED_DEAN, Syllabus.Status.SUBMITTED_UMU]:
+                raise PermissionDenied("Силлабус должен быть на согласовании.")
         else:
             raise PermissionDenied("Отклонять могут только декан или УМУ.")
 
     if new_status == Syllabus.Status.SUBMITTED_UMU:
-        if user.role not in ["dean", "teacher", "admin"]:
-            raise PermissionDenied("Отправлять в УМУ могут преподаватель, декан или админ.")
+        if not is_admin and user != syllabus.creator:
+            raise PermissionDenied("Отправить в УМУ может только автор силлабуса.")
+        if not is_admin and not is_teacher_like:
+            raise PermissionDenied("Отправлять в УМУ может только преподаватель или декан.")
         if old_status != Syllabus.Status.APPROVED_DEAN:
             raise PermissionDenied("Сначала силлабус должен быть утвержден деканом.")
 
     if new_status == Syllabus.Status.APPROVED_UMU:
-        if user.role != "umu":
+        if not is_admin and not is_umu:
             raise PermissionDenied("Только УМУ может финально утверждать силлабус.")
+        if not is_admin and is_creator:
+            raise PermissionDenied("Нельзя утверждать собственный силлабус.")
         if old_status != Syllabus.Status.SUBMITTED_UMU:
             raise PermissionDenied("Силлабус должен быть отправлен в УМУ.")
 
@@ -51,7 +74,7 @@ def change_status(user, syllabus: Syllabus, new_status: str, comment: str = ""):
         from_status=old_status,
         to_status=new_status,
         changed_by=user,
-        comment=comment or "",
+        comment=comment,
     )
 
     return syllabus

@@ -9,7 +9,7 @@ from .models import Course, Topic, TopicLiterature, TopicQuestion
 
 
 @login_required
-@role_required("teacher", "admin")
+@role_required("teacher", "dean", "admin")
 def courses_list(request):
     if request.user.role == "admin":
         courses = Course.objects.all()
@@ -19,7 +19,7 @@ def courses_list(request):
 
 
 @login_required
-@role_required("teacher", "admin")
+@role_required("teacher", "dean", "admin")
 def course_create(request):
     if request.method == "POST":
         form = CourseForm(request.POST)
@@ -35,7 +35,7 @@ def course_create(request):
 
 
 @login_required
-@role_required("teacher", "admin")
+@role_required("teacher", "dean", "admin")
 def course_edit(request, pk):
     if request.user.role == "admin":
         course = get_object_or_404(Course, pk=pk)
@@ -59,14 +59,19 @@ def course_detail(request, pk):
         Course.objects.prefetch_related("topics__literature", "topics__questions"),
         pk=pk,
     )
-    if course.owner != request.user and not course.is_shared and request.user.role not in ["admin", "dean", "umu"]:
+    if course.owner != request.user and not course.is_shared and request.user.role not in [
+        "admin",
+        "dean",
+        "umu",
+        "program_leader",
+    ]:
         raise PermissionDenied("Нет доступа к этому курсу.")
     topics = course.topics.order_by("order_index")
     return render(request, "catalog/course_detail.html", {"course": course, "topics": topics})
 
 
 @login_required
-@role_required("teacher", "admin")
+@role_required("teacher", "dean", "admin")
 def topic_create(request, course_pk):
     if request.user.role == "admin":
         course = get_object_or_404(Course, pk=course_pk)
@@ -105,7 +110,7 @@ def topic_create(request, course_pk):
 
 
 @login_required
-@role_required("teacher", "admin")
+@role_required("teacher", "dean", "admin")
 def topic_edit(request, course_pk, pk):
     if request.user.role == "admin":
         course = get_object_or_404(Course, pk=course_pk)
@@ -139,14 +144,14 @@ def topic_edit(request, course_pk, pk):
 
 
 @login_required
-@role_required("teacher", "admin", "dean")
+@role_required("teacher", "program_leader", "dean", "admin")
 def shared_courses_list(request):
     courses = Course.objects.filter(is_shared=True).select_related("owner")
     return render(request, "catalog/shared_courses_list.html", {"courses": courses})
 
 
 @login_required
-@role_required("teacher", "admin")
+@role_required("teacher", "dean", "admin")
 @transaction.atomic
 def course_fork(request, pk):
     source = get_object_or_404(Course, pk=pk, is_shared=True)

@@ -1,12 +1,58 @@
+import os
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-eay#!&5+t&u54la8ems-zm*nc!6bv5_7_gm*u2@0*q5z$tqsvl"
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
-DEBUG = True
 
-ALLOWED_HOSTS = []
+def _env_list(name: str, default: list[str] | None = None) -> list[str]:
+    raw = os.getenv(name)
+    if raw is None:
+        return default or []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _database_from_url(url: str) -> dict:
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    if scheme == "sqlite":
+        path = parsed.path or ""
+        if path.startswith("/") and len(path) > 2 and path[2] == ":":
+            path = path[1:]
+        if not path:
+            path = ":memory:"
+        return {"ENGINE": "django.db.backends.sqlite3", "NAME": path}
+    if scheme in {"postgres", "postgresql"}:
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": (parsed.path or "/").lstrip("/"),
+            "USER": unquote(parsed.username or ""),
+            "PASSWORD": unquote(parsed.password or ""),
+            "HOST": parsed.hostname or "",
+            "PORT": str(parsed.port or ""),
+        }
+    raise ValueError(f"Unsupported DATABASE_URL scheme: {scheme}")
+
+
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-eay#!&5+t&u54la8ems-zm*nc!6bv5_7_gm*u2@0*q5z$tqsvl",
+)
+
+DEBUG = _env_bool("DJANGO_DEBUG", True)
+
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["127.0.0.1", "localhost"] if DEBUG else [],
+)
+
+CSRF_TRUSTED_ORIGINS = _env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 
 # Приложения
@@ -67,16 +113,31 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # База данных
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "almau_syllabus",
-        "USER": "postgres",
-        "PASSWORD": "123",          # твой пароль от postgres
-        "HOST": "localhost",
-        "PORT": "5432",
-    }
-}
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DATABASES = {"default": _database_from_url(DATABASE_URL)}
+else:
+    DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.sqlite3")
+    if DB_ENGINE.endswith("sqlite3"):
+        DB_NAME = os.getenv("DB_NAME", str(BASE_DIR / "db.sqlite3"))
+        DATABASES = {
+            "default": {
+                "ENGINE": DB_ENGINE,
+                "NAME": DB_NAME,
+            }
+        }
+    else:
+        DB_NAME = os.getenv("DB_NAME", "almau_syllabus")
+        DATABASES = {
+            "default": {
+                "ENGINE": DB_ENGINE,
+                "NAME": DB_NAME,
+                "USER": os.getenv("DB_USER", "postgres"),
+                "PASSWORD": os.getenv("DB_PASSWORD", "123"),
+                "HOST": os.getenv("DB_HOST", "localhost"),
+                "PORT": os.getenv("DB_PORT", "5432"),
+            }
+        }
 
 
 # Валидация паролей

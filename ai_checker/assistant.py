@@ -45,8 +45,13 @@ def _env_str(name: str, default: str) -> str:
     return value or default
 
 
-def _is_fast_mode() -> bool:
-    mode = _env_str("LLM_ASSISTANT_MODE", "llm").lower()
+def _assistant_mode() -> str:
+    return _env_str("LLM_ASSISTANT_MODE", "llm").lower()
+
+
+def _is_fast_mode(mode: str | None = None) -> bool:
+    if mode is None:
+        mode = _assistant_mode()
     return mode in {"fast", "rules", "off", "0"}
 
 _GUIDELINES_LIMIT = _env_int("LLM_GUIDELINES_LIMIT", 2000)
@@ -59,9 +64,9 @@ _GREETING_CLEAN_RE = re.compile(r"[^\\w\\s\\-]+", re.UNICODE)
 _FAST_GREETINGS = {
     "привет",
     "здравствуйте",
-    "салам",
-    "салем",
-    "ассаламу алейкум",
+    "добрый день",
+    "добрый вечер",
+    "доброе утро",
     "hi",
     "hello",
 }
@@ -82,6 +87,18 @@ def _rules_only_answer(message: str) -> str:
         return (
             "Напишите, что нужно проверить: "
             "темы, недели, часы, литературу или вопросы."
+        )
+
+    if "силлабус" in text and any(
+        word in text for word in ("созд", "сдел", "собер", "сформир", "оформ")
+    ):
+        return (
+            "Чтобы создать силлабус:\n"
+            "1) Перейдите в раздел \"Силлабусы\" и нажмите \"Создать\".\n"
+            "2) Выберите курс, язык, семестр и количество недель.\n"
+            "3) Добавьте темы из банка тем (или сначала создайте тему в разделе \"Курсы\").\n"
+            "4) Проверьте часы, литературу и контрольные вопросы по темам.\n"
+            "5) Сохраните черновик и отправьте на согласование декану."
         )
 
     if "недел" in text or "week" in text:
@@ -119,10 +136,36 @@ def _rules_only_answer(message: str) -> str:
         )
 
     return (
-        "Быстрый режим: помогу с темами, "
-        "неделями, часами, литературой и вопросами. "
-        "Напишите, что починить."
+        "Могу помочь по силлабусу: создать, заполнить темы, недели, часы, литературу "
+        "и вопросы, проверить ошибки. "
+        "Опишите задачу одной фразой, например: \"создать силлабус\", "
+        "\"проверить недели\", \"добавить литературу\"."
     )
+
+
+_SYLLABUS_HINTS = (
+    "силлабус",
+    "syllabus",
+    "курс",
+    "course",
+    "тема",
+    "темы",
+    "topic",
+    "недел",
+    "week",
+    "час",
+    "hour",
+    "литератур",
+    "literature",
+    "вопрос",
+    "question",
+)
+
+
+def _is_syllabus_related(text: str) -> bool:
+    if not text:
+        return False
+    return any(hint in text for hint in _SYLLABUS_HINTS)
 
 _DEFAULT_GUIDELINES = (
     "Рекомендации по заполнению силлабуса:\n"
@@ -137,10 +180,12 @@ _DEFAULT_GUIDELINES = (
 
 
 def _load_guidelines_from_txt(path: Path) -> str:
-    try:
-        return path.read_text(encoding="utf-8").strip()
-    except Exception:
-        return ""
+    for encoding in ("utf-8", "cp1251"):
+        try:
+            return path.read_text(encoding=encoding).strip()
+        except Exception:
+            continue
+    return ""
 
 
 def _extract_guidelines_from_pdf(path: Path) -> str:
@@ -212,37 +257,56 @@ def load_guidelines() -> str:
 
 
 def answer_syllabus_question(message: str, syllabus=None) -> tuple[str, str]:
+    mode = _assistant_mode()
     fast = _fast_reply(message)
     if fast:
         return fast, "rules-only"
 
-    if _is_fast_mode():
+    if _is_fast_mode(mode):
         return _rules_only_answer(message), "rules-only"
 
-    guidelines = load_guidelines()
+    text_lower = message.strip().lower()
+    is_syllabus = _is_syllabus_related(text_lower)
+    guidelines = ""
     syllabus_text = ""
-    if syllabus is not None:
-        syllabus_text = build_syllabus_text(syllabus)[:_ASSISTANT_SYLLABUS_LIMIT]
 
-    system = (
-        "Ты помощник по заполнению силлабуса. "
-        "Отвечай коротко и по делу на русском, предпочтительно списком. "
-        "Если в вопросе не хватает данных, задай 1-2 уточняющих вопроса. "
-        "Не придумывай факты и литературу."
-    )
+    if is_syllabus:
+        guidelines = load_guidelines()
+        if syllabus is not None:
+            syllabus_text = build_syllabus_text(syllabus)[:_ASSISTANT_SYLLABUS_LIMIT]
 
-    prompt = (
-        "<|im_start|>system\n"
-        f"{system}\n\n"
-        "Правила и пример оформления:\n"
-        f"{guidelines}\n"
-        "<|im_end|>\n"
-        "<|im_start|>user\n"
-        f"Вопрос: {message}\n\n"
-    )
+        system = (
+            "Ты помощник по заполнению силлабуса. "
+            "Отвечай коротко и по делу на русском, предпочтительно списком. "
+            "Если в вопросе не хватает данных, задай 1-2 уточняющих вопроса. "
+            "Не придумывай факты и литературу."
+        )
 
-    if syllabus_text:
-        prompt += f"Текущие данные силлабуса:\n{syllabus_text}\n\n"
+        prompt = (
+            "<|im_start|>system\n"
+            f"{system}\n\n"
+            "Правила и пример оформления:\n"
+            f"{guidelines}\n"
+            "<|im_end|>\n"
+            "<|im_start|>user\n"
+            f"Вопрос: {message}\n\n"
+        )
+
+        if syllabus_text:
+            prompt += f"Текущие данные силлабуса:\n{syllabus_text}\n\n"
+    else:
+        system = (
+            "Ты универсальный помощник. "
+            "Отвечай кратко и по делу на русском. "
+            "Если вопрос не ясен, задай один уточняющий вопрос."
+        )
+        prompt = (
+            "<|im_start|>system\n"
+            f"{system}\n"
+            "<|im_end|>\n"
+            "<|im_start|>user\n"
+            f"{message}\n"
+        )
 
     prompt += "<|im_end|>\n<|im_start|>assistant\n"
 
@@ -255,6 +319,8 @@ def answer_syllabus_question(message: str, syllabus=None) -> tuple[str, str]:
         )
         model_name = get_model_name()
     except Exception as exc:
+        if mode == "auto":
+            return _rules_only_answer(message), "rules-only"
         return f"AI недоступен: {exc}", "rules-only"
 
     if not answer:

@@ -6,12 +6,12 @@
   Модель: {{ check.model_name }} - Дата: {{ check.created_at|date:"d.m.Y H:i" }}
 </p>
 
-<div class="bg-white rounded shadow p-4 whitespace-pre-line mb-4">
+<div class="card p-4 whitespace-pre-line mb-4">
   {{ check.summary }}
 </div>
 
 {% if check.raw_result.structure %}
-  <div class="bg-white rounded shadow p-4">
+  <div class="card p-4">
     <h2 class="text-lg font-semibold mb-2">Структурный анализ</h2>
     <ul class="list-disc ml-5 text-sm space-y-1">
       <li>Тем в силлабусе: {{ check.raw_result.structure.total_topics }}</li>

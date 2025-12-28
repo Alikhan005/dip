@@ -4,6 +4,39 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 
 
+def _split_lines(value: str) -> list[str]:
+    if not value:
+        return []
+    items = []
+    for raw in value.splitlines():
+        cleaned = raw.strip().lstrip("-•").strip()
+        if cleaned:
+            items.append(cleaned)
+    return items
+
+
+def _build_literature_lists(topics):
+    main_items = []
+    additional_items = []
+    seen = set()
+    for st in topics:
+        for lit in st.topic.literature.all():
+            key = (lit.title, lit.author, lit.year, lit.lit_type)
+            if key in seen:
+                continue
+            seen.add(key)
+            entry = lit.title
+            if lit.author:
+                entry = f"{entry} - {lit.author}"
+            if lit.year:
+                entry = f"{entry} ({lit.year})"
+            if lit.lit_type == lit.LitType.MAIN:
+                main_items.append(entry)
+            else:
+                additional_items.append(entry)
+    return main_items, additional_items
+
+
 def generate_syllabus_pdf(syllabus):
     """
     Generate PDF or return informative 501 if WeasyPrint deps are missing.
@@ -25,11 +58,22 @@ def generate_syllabus_pdf(syllabus):
         .prefetch_related("topic__literature", "topic__questions")
         .order_by("week_number")
     )
+    derived_main_literature, derived_additional_literature = _build_literature_lists(topics)
+    main_literature_list = _split_lines(syllabus.main_literature) or derived_main_literature
+    additional_literature_list = (
+        _split_lines(syllabus.additional_literature) or derived_additional_literature
+    )
+    learning_outcomes_list = _split_lines(syllabus.learning_outcomes)
+    teaching_methods_list = _split_lines(syllabus.teaching_methods)
     html = render_to_string(
         "syllabi/pdf.html",
         {
             "syllabus": syllabus,
             "topics": topics,
+            "learning_outcomes_list": learning_outcomes_list,
+            "teaching_methods_list": teaching_methods_list,
+            "main_literature_list": main_literature_list,
+            "additional_literature_list": additional_literature_list,
         },
     )
 

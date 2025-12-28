@@ -29,13 +29,13 @@
       </td>
       <td class="p-2 text-sm">
         {% if syllabus.pdf_file %}
-          <a href="{{ syllabus.pdf_file.url }}" class="text-blue-600 hover:underline">Скачать</a>
+          <a href="{{ syllabus.pdf_file.url }}" class="link">Скачать</a>
         {% else %}
           <span class="text-gray-500">Нет файла</span>
         {% endif %}
       </td>
       <td class="p-2">
-        <a href="{% url 'syllabus_detail' syllabus.pk %}" class="text-blue-600 hover:underline">Открыть</a>
+        <a href="{% url 'syllabus_detail' syllabus.pk %}" class="link">Открыть</a>
       </td>
     </tr>
   {% empty %}

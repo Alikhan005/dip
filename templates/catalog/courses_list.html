@@ -5,7 +5,9 @@
   <h1 class="text-2xl font-semibold">
     {% if user.role == "admin" %}Курсы{% else %}Мои курсы{% endif %}
   </h1>
-  <a href="{% url 'course_create' %}" class="btn-primary">Создать курс</a>
+  {% if user.can_edit_content %}
+    <a href="{% url 'course_create' %}" class="btn-primary">Создать курс</a>
+  {% endif %}
 </div>
 
 <table class="table">
@@ -26,7 +28,7 @@
       <td class="p-2">{{ course.available_languages_display }}</td>
       <td class="p-2">{{ course.is_shared|yesno:"Да,Нет" }}</td>
       <td class="p-2">
-        <a href="{% url 'course_detail' course.pk %}" class="text-blue-600">Открыть</a>
+        <a href="{% url 'course_detail' course.pk %}" class="link">Открыть</a>
       </td>
     </tr>
   {% empty %}

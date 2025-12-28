@@ -31,6 +31,34 @@ class Syllabus(models.Model):
     is_shared = models.BooleanField(default=False)
     version_number = models.PositiveIntegerField(default=1)
 
+    credits_ects = models.CharField(max_length=20, blank=True)
+    total_hours = models.PositiveIntegerField(blank=True, null=True)
+    contact_hours = models.PositiveIntegerField(blank=True, null=True)
+    self_study_hours = models.PositiveIntegerField(blank=True, null=True)
+    prerequisites = models.TextField(blank=True)
+    delivery_format = models.CharField(max_length=100, blank=True)
+    level = models.CharField(max_length=100, blank=True)
+    program_name = models.CharField(max_length=255, blank=True)
+    instructor_name = models.CharField(max_length=255, blank=True)
+    instructor_contacts = models.TextField(blank=True)
+    class_schedule = models.TextField(blank=True)
+
+    course_description = models.TextField(blank=True)
+    course_goal = models.TextField(blank=True)
+    learning_outcomes = models.TextField(blank=True)
+    teaching_methods = models.TextField(blank=True)
+
+    teaching_philosophy = models.TextField(blank=True)
+    course_policy = models.TextField(blank=True)
+    academic_integrity_policy = models.TextField(blank=True)
+    inclusive_policy = models.TextField(blank=True)
+    assessment_policy = models.TextField(blank=True)
+    grading_scale = models.TextField(blank=True)
+    appendix = models.TextField(blank=True)
+
+    main_literature = models.TextField(blank=True)
+    additional_literature = models.TextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -46,6 +74,11 @@ class SyllabusTopic(models.Model):
 
     custom_title = models.CharField(max_length=255, blank=True)
     custom_hours = models.PositiveIntegerField(null=True, blank=True)
+    week_label = models.CharField(max_length=20, blank=True)
+    tasks = models.TextField(blank=True)
+    learning_outcomes = models.TextField(blank=True)
+    literature_notes = models.TextField(blank=True)
+    assessment = models.TextField(blank=True)
 
     class Meta:
         ordering = ["week_number"]

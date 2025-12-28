@@ -8,52 +8,70 @@
   <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.0"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=6">
 </head>
 <body class="bg-slate-100 text-slate-800">
-  <nav class="bg-white shadow-sm border-b border-slate-200 site-nav">
-    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between site-nav__inner">
+  {% if not hide_nav %}
+  <nav class="site-nav" data-site-nav>
+    <div class="site-nav__inner">
       <div class="flex items-center space-x-3 site-nav__brand">
         <img src="{% static 'img/logo.png' %}" alt="AlmaU" class="h-8 w-auto">
         {% if user.is_authenticated %}
-          <a href="{% url 'dashboard' %}" class="font-semibold hover:text-blue-700">AlmaU Syllabus</a>
+          <a href="{% url 'dashboard' %}" class="font-semibold link">AlmaU Syllabus</a>
         {% else %}
           <span class="font-semibold">AlmaU Syllabus</span>
         {% endif %}
         {% if user.is_authenticated %}
-          <div class="hidden sm:flex items-center space-x-4 ml-6 site-nav__links">
-            <a href="{% url 'courses_list' %}" class="nav-link">Курсы</a>
-            <a href="{% url 'shared_courses_list' %}" class="nav-link">Общие курсы</a>
+          <button
+            type="button"
+            class="site-nav__toggle"
+            data-nav-toggle
+            aria-expanded="false"
+            aria-controls="site-nav-links"
+            aria-label="Toggle menu"
+          >
+            <span class="site-nav__toggle-bar"></span>
+            <span class="site-nav__toggle-bar"></span>
+            <span class="site-nav__toggle-bar"></span>
+          </button>
+          <div id="site-nav-links" class="hidden sm:flex items-center space-x-4 ml-6 site-nav__links">
+            {% if user.can_view_courses %}
+              <a href="{% url 'courses_list' %}" class="nav-link">Курсы</a>
+            {% endif %}
+            {% if user.can_view_shared_courses %}
+              <a href="{% url 'shared_courses_list' %}" class="nav-link">Общие курсы</a>
+            {% endif %}
             <a href="{% url 'syllabi_list' %}" class="nav-link">Силлабусы</a>
             <a href="{% url 'shared_syllabi_list' %}" class="nav-link">Общие силлабусы</a>
           </div>
         {% endif %}
       </div>
-      <div class="flex items-center space-x-3 site-nav__user">
-        {% if user.is_authenticated %}
+      {% if user.is_authenticated %}
+        <div class="flex items-center space-x-3 site-nav__user">
           <a href="{% url 'profile' %}" class="nav-link">Профиль</a>
           <span class="text-sm text-gray-700">{{ user.get_full_name|default:user.username }}</span>
           <a href="{% url 'logout' %}" class="btn-secondary">Выйти</a>
-        {% else %}
-          {% if request.path != '/accounts/login/' and request.path != '/' %}
-            <a href="{% url 'login' %}" class="btn-secondary">Войти</a>
-          {% endif %}
-          {% if request.path != '/accounts/signup/' %}
-            <a href="{% url 'signup' %}" class="btn-primary">Регистрация</a>
-          {% endif %}
-        {% endif %}
-      </div>
+        </div>
+      {% endif %}
     </div>
   </nav>
+  {% endif %}
 
-  <main class="max-w-6xl mx-auto px-6 py-6 page-container">
+  <main class="page-container">
+    {% if messages %}
+      <div class="space-y-2 mb-4">
+        {% for message in messages %}
+          <div class="flash flash--{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
-  {% if user.is_authenticated %}
+  {% if user.is_authenticated and not hide_nav %}
     <div class="ai-widget" data-ai-widget>
       <button
         type="button"
@@ -66,6 +84,9 @@
       >
         <img src="{% static 'img/ai.svg' %}" alt="AI помощник" class="ai-widget__icon" width="28" height="28" loading="lazy" decoding="async">
       </button>
+      <div class="ai-widget__nudge" data-ai-nudge aria-hidden="true" hidden>
+        Я помощник силлабуса — нажми на меня :)
+      </div>
       <section id="ai-widget-panel" class="ai-widget__panel" data-ai-panel aria-hidden="true" hidden>
         <div class="ai-widget__header">
           <div>
@@ -108,22 +129,99 @@
 
   <script>
     (function () {
+      const nav = document.querySelector("[data-site-nav]");
+      if (!nav) return;
+      const toggle = nav.querySelector("[data-nav-toggle]");
+      if (!toggle) return;
+
+      const setOpen = (isOpen) => {
+        nav.classList.toggle("site-nav--open", isOpen);
+        toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      };
+
+      toggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setOpen(!nav.classList.contains("site-nav--open"));
+      });
+
+      nav.querySelectorAll(".nav-link, .btn-secondary").forEach((link) => {
+        link.addEventListener("click", () => setOpen(false));
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!nav.contains(event.target)) {
+          setOpen(false);
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setOpen(false);
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (window.innerWidth >= 640) {
+          setOpen(false);
+        }
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
       const widget = document.querySelector("[data-ai-widget]");
       if (!widget) return;
       const toggle = widget.querySelector("[data-ai-toggle]");
       const closeBtn = widget.querySelector("[data-ai-close]");
       const panel = widget.querySelector("[data-ai-panel]");
+      const history = widget.querySelector("#ai-widget-history");
+      const input = widget.querySelector(".ai-widget__input");
+      const nudge = widget.querySelector("[data-ai-nudge]");
+      const NUDGE_KEY = "ai_widget_nudge_seen";
+
+      const scrollToBottom = () => {
+        if (history) {
+          history.scrollTop = history.scrollHeight;
+        }
+      };
+
+      const showNudge = () => {
+        if (!nudge) return;
+        widget.classList.add("ai-widget--nudge");
+        nudge.hidden = false;
+        nudge.setAttribute("aria-hidden", "false");
+      };
+
+      const hideNudge = () => {
+        if (!nudge) return;
+        widget.classList.remove("ai-widget--nudge");
+        nudge.hidden = true;
+        nudge.setAttribute("aria-hidden", "true");
+      };
 
       const setOpen = (isOpen) => {
         widget.classList.toggle("ai-widget--open", isOpen);
         toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
         panel.setAttribute("aria-hidden", isOpen ? "false" : "true");
         panel.hidden = !isOpen;
+        if (isOpen) {
+          hideNudge();
+        }
+        if (isOpen) {
+          setTimeout(() => {
+            if (input) {
+              input.focus();
+            }
+            scrollToBottom();
+          }, 0);
+        }
       };
 
       toggle.addEventListener("click", (event) => {
         event.stopPropagation();
         setOpen(!widget.classList.contains("ai-widget--open"));
+        hideNudge();
       });
 
       closeBtn.addEventListener("click", (event) => {
@@ -142,6 +240,25 @@
           setOpen(false);
         }
       });
+
+      document.body.addEventListener("htmx:afterSwap", (event) => {
+        if (event.target === history) {
+          scrollToBottom();
+        }
+      });
+
+      if (nudge) {
+        try {
+          if (!sessionStorage.getItem(NUDGE_KEY)) {
+            sessionStorage.setItem(NUDGE_KEY, "1");
+            showNudge();
+            setTimeout(hideNudge, 10000);
+          }
+        } catch (err) {
+          showNudge();
+          setTimeout(hideNudge, 10000);
+        }
+      }
     })();
   </script>
 </body>
