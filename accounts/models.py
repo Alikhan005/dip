@@ -1,10 +1,33 @@
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
 
+USERNAME_REGEX = "^[0-9A-Za-z@.+_\\-\u0401\u0451\u0410-\u042F\u0430-\u044F]+\\Z"
+username_validator = RegexValidator(
+    regex=USERNAME_REGEX,
+    message=_(
+        "Enter a valid username. This value may contain only letters, numbers, and @/./+/-/_ characters."
+    ),
+    code="invalid",
+)
+
+
 class User(AbstractUser):
+    username = models.CharField(
+        _("username"),
+        max_length=150,
+        unique=True,
+        help_text=_("Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."),
+        validators=[username_validator],
+        error_messages={"unique": _("A user with that username already exists.")},
+    )
+
     class Role(models.TextChoices):
         TEACHER = "teacher", "Преподаватель"
         PROGRAM_LEADER = "program_leader", "Руководитель программы"
@@ -45,6 +68,15 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.get_full_name() or self.username
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"),
+                name="unique_user_email_ci",
+                condition=~Q(email=""),
+            ),
+        ]
 
 
 class EmailVerification(models.Model):

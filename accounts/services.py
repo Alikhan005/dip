@@ -2,7 +2,8 @@ import random
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from .models import EmailVerification
@@ -27,7 +28,9 @@ def create_or_refresh_verification(user, verification: EmailVerification | None 
     expires_at = now + timedelta(minutes=ttl_minutes)
 
     if verification is None:
-        verification, _ = EmailVerification.objects.get_or_create(user=user)
+        verification = EmailVerification.objects.filter(user=user).first()
+    if verification is None:
+        verification = EmailVerification(user=user)
 
     verification.set_code(code)
     verification.expires_at = expires_at
@@ -47,15 +50,19 @@ def send_verification_email(user, code: str, ttl_minutes: int) -> None:
     if not user.email:
         raise ValueError("User email is missing.")
 
+    context = {
+        "user": user,
+        "code": code,
+        "ttl_minutes": ttl_minutes,
+    }
     subject = "Подтверждение email AlmaU Syllabus"
-    message = (
-        f"Ваш код подтверждения: {code}\n"
-        f"Код действует {ttl_minutes} минут."
+    text_body = render_to_string("registration/verify_email_email.txt", context).strip()
+    html_body = render_to_string("registration/verify_email_email.html", context)
+    email = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
     )
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=False,
-    )
+    email.attach_alternative(html_body, "text/html")
+    email.send(fail_silently=False)

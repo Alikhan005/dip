@@ -1,8 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView as BaseLoginView, LogoutView
+from django.contrib.auth.views import (
+    LoginView as BaseLoginView,
+    LogoutView,
+    PasswordResetView,
+)
 from django.db import IntegrityError
+from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_POST
@@ -20,6 +25,45 @@ class LoginGateView(BaseLoginView):
     extra_context = {"hide_nav": True}
     authentication_form = LoginForm
 
+    def form_invalid(self, form):
+        identifier = (form.data.get("username") or "").strip()
+        password = form.data.get("password") or ""
+        if identifier and password:
+            user = (
+                get_user_model()
+                .objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier))
+                .first()
+            )
+            if user and user.check_password(password) and not user.is_active:
+                verification = getattr(user, "email_verification", None)
+                try:
+                    if verification and not can_resend(verification):
+                        messages.warning(
+                            self.request,
+                            "Код уже отправлен. Подождите минуту и попробуйте снова.",
+                        )
+                    else:
+                        code, ttl_minutes = create_or_refresh_verification(user, verification)
+                        try:
+                            send_verification_email(user, code, ttl_minutes)
+                            messages.info(
+                                self.request,
+                                "Аккаунт не активирован. Мы отправили код подтверждения.",
+                            )
+                        except Exception:
+                            messages.error(
+                                self.request,
+                                "Не удалось отправить письмо с кодом. Попробуйте позже.",
+                            )
+                    self.request.session[VERIFY_SESSION_KEY] = user.pk
+                    return redirect("verify_email")
+                except Exception:
+                    messages.error(
+                        self.request,
+                        "Не удалось подготовить код подтверждения. Попробуйте позже.",
+                    )
+        return super().form_invalid(form)
+
 
 class LogoutAllowGetView(LogoutView):
     """Allow logout via GET for UX parity with legacy behavior."""
@@ -36,19 +80,40 @@ class SignupView(CreateView):
 
     def form_valid(self, form):
         try:
-            user = form.save(commit=False)
-            user.is_active = False
-            user.email_verified = False
-            user.save()
-            form.save_m2m()
+            existing_user = getattr(form, "existing_user", None)
+            if existing_user:
+                user = existing_user
+                user.username = form.cleaned_data["username"]
+                user.first_name = form.cleaned_data["first_name"]
+                user.last_name = form.cleaned_data["last_name"]
+                user.email = form.cleaned_data["email"]
+                user.role = form.cleaned_data["role"]
+                user.faculty = form.cleaned_data["faculty"]
+                user.department = form.cleaned_data["department"]
+                user.set_password(form.cleaned_data["password1"])
+                user.is_active = False
+                user.email_verified = False
+                user.save()
+            else:
+                user = form.save(commit=False)
+                user.is_active = False
+                user.email_verified = False
+                user.save()
+                form.save_m2m()
 
             code, ttl_minutes = create_or_refresh_verification(user)
             try:
                 send_verification_email(user, code, ttl_minutes)
-                messages.success(
-                    self.request,
-                    "Мы отправили код подтверждения на почту. Введите его для активации аккаунта.",
-                )
+                if existing_user:
+                    messages.info(
+                        self.request,
+                        "Аккаунт уже создан. Мы отправили новый код подтверждения на почту.",
+                    )
+                else:
+                    messages.success(
+                        self.request,
+                        "Мы отправили код подтверждения на почту. Введите его для активации аккаунта.",
+                    )
             except Exception:
                 messages.error(
                     self.request,
@@ -58,7 +123,68 @@ class SignupView(CreateView):
             self.request.session[VERIFY_SESSION_KEY] = user.pk
             return redirect("verify_email")
         except IntegrityError:
-            form.add_error("username", "Пользователь с таким именем уже существует.")
+            username = (form.cleaned_data.get("username") or "").strip()
+            email = (form.cleaned_data.get("email") or "").strip()
+            if username and get_user_model().objects.filter(username__iexact=username).exists():
+                form.add_error("username", "Пользователь с таким именем уже существует.")
+            if email and get_user_model().objects.filter(email__iexact=email).exists():
+                form.add_error("email", "Пользователь с таким email уже существует.")
+            if not form.errors:
+                form.add_error(None, "Не удалось создать аккаунт. Проверьте данные и попробуйте снова.")
+            return self.form_invalid(form)
+
+
+class PasswordResetGateView(PasswordResetView):
+    template_name = "registration/password_reset_form.html"
+    email_template_name = "registration/password_reset_email.html"
+    html_email_template_name = "registration/password_reset_email_html.html"
+    subject_template_name = "registration/password_reset_subject.txt"
+    success_url = reverse_lazy("password_reset_done")
+    extra_context = {"hide_nav": True}
+
+    def form_valid(self, form):
+        email = (form.cleaned_data.get("email") or "").strip()
+        user_model = get_user_model()
+        users = list(user_model.objects.filter(email__iexact=email))
+        if not users:
+            form.add_error("email", "Пользователь с таким email не найден.")
+            return self.form_invalid(form)
+
+        active_exists = any(user.is_active for user in users)
+        inactive_user = next(
+            (user for user in users if not user.is_active and not user.email_verified),
+            None,
+        )
+        if inactive_user and not active_exists:
+            try:
+                code, ttl_minutes = create_or_refresh_verification(inactive_user)
+            except Exception:
+                form.add_error(
+                    None,
+                    "Не удалось подготовить код подтверждения. Попробуйте позже.",
+                )
+                return self.form_invalid(form)
+            try:
+                send_verification_email(inactive_user, code, ttl_minutes)
+                messages.info(
+                    self.request,
+                    "Аккаунт не активирован. Мы отправили код подтверждения на почту.",
+                )
+            except Exception:
+                messages.error(
+                    self.request,
+                    "Не удалось отправить письмо с кодом. Попробуйте позже.",
+                )
+            self.request.session[VERIFY_SESSION_KEY] = inactive_user.pk
+            return redirect("verify_email")
+
+        try:
+            return super().form_valid(form)
+        except Exception:
+            form.add_error(
+                None,
+                "Не удалось отправить письмо для восстановления. Проверьте настройки почты и попробуйте позже.",
+            )
             return self.form_invalid(form)
 
 

@@ -4,6 +4,7 @@ venv312/
 __pycache__/
 *.py[cod]
 *.sqlite3
+*.sqlite3.bak*
 media/
 staticfiles/
 dip/

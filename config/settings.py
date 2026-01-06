@@ -2,7 +2,10 @@ import os
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env", override=True)
 
 # Загружаем .env автоматически, чтобы email/БД и другие настройки брались из файла окружения
 try:
@@ -223,6 +226,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Кастомный пользователь и редиректы логина
 
 AUTH_USER_MODEL = "accounts.User"
+AUTHENTICATION_BACKENDS = [
+    "accounts.backends.EmailOrUsernameBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "home"
 LOGIN_URL = "home"

@@ -146,6 +146,18 @@ form label {
   margin-bottom: 0.35rem;
 }
 
+.errorlist {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  list-style: none;
+  color: #b91c1c;
+  font-size: 0.86rem;
+}
+
+.errorlist.nonfield {
+  margin-bottom: 0.75rem;
+}
+
 input[type="text"],
 input[type="number"],
 input[type="email"],
